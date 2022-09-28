@@ -11,12 +11,12 @@ import 'markdown_toc.dart';
 
 ///use [MarkdownGenerator] to transform markdown data to [Widget] list, so you can render it by any type of [ListView]
 class MarkdownGenerator {
-  MarkdownGenerator({
-    required String data,
-    WidgetConfig? widgetConfig,
-    StyleConfig? styleConfig,
-    EdgeInsetsGeometry? childMargin,
-  }) {
+  MarkdownGenerator(
+      {required String data,
+      WidgetConfig? widgetConfig,
+      StyleConfig? styleConfig,
+      EdgeInsetsGeometry? childMargin,
+      String? buttonLabel}) {
     final m.Document document = m.Document(
         extensionSet: m.ExtensionSet.gitHubFlavored,
         encodeHtml: false,
@@ -26,9 +26,106 @@ class MarkdownGenerator {
     _tocList = LinkedHashMap();
     _helper = MarkdownHelper(wConfig: widgetConfig);
     _widgets = [];
-    nodes.forEach((element) {
-      _widgets!.add(_generatorWidget(element, childMargin));
+
+    for (int i = 0; i < nodes.length; ++i) {
+      if (i == nodes.length - 1) {
+        m.Node node = nodes[i];
+
+        if (buttonLabel != null) {
+          if (node is m.Text) {
+            _widgets!.add(_generatorWidget(
+                m.Element(
+                    p,
+                    List<m.Node>.from([node])
+                      ..addAll([
+                        m.Element(button, [m.Text(buttonLabel)])
+                      ])),
+                childMargin));
+          } else {
+            _widgets!.add(_generatorWidget(
+                m.Element(
+                    (node as m.Element).tag,
+                    List<m.Node>.from(node.children!)
+                      ..addAll([
+                        m.Element(button, [m.Text(buttonLabel)])
+                      ])),
+                childMargin));
+          }
+        } else {
+          _widgets!.add(_generatorWidget(nodes[i], childMargin));
+        }
+      } else {
+        _widgets!.add(_generatorWidget(nodes[i], childMargin));
+      }
+    }
+  }
+
+  List<m.Node> getNodes(m.Text textNode) {
+    List<m.Node> nodes = <m.Node>[];
+
+    RegExp regex = RegExp(
+        r"([a-zA-Z0-9._]+\@[a-zA-Z0-9]+(\.[a-zA-Z]+){1,2}|[0-9]((\s{0,1}[0-9]){9}|(\.{0,1}[0-9]){9}))");
+    RegExp emailRegex =
+        RegExp(r"[a-zA-Z0-9._]+\@[a-zA-Z0-9]+(\.[a-zA-Z]+){1,2}");
+
+    int index = 0;
+
+    regex.allMatches(textNode.text).forEach((RegExpMatch regExpMatch) {
+      m.Node node = m.Element("", []);
+
+      bool isCorrect = false;
+
+      if (regExpMatch.start == 0) {
+        if (regExpMatch.end == textNode.text.length) {
+          isCorrect = true;
+        } else {
+          if (textNode.text[regExpMatch.end] == " ") {
+            isCorrect = true;
+          }
+        }
+      } else {
+        if (regExpMatch.end == textNode.text.length) {
+          if (textNode.text[regExpMatch.start - 1] == "") {
+            isCorrect = true;
+          }
+        } else {
+          if (textNode.text[regExpMatch.start - 1] == " " &&
+              textNode.text[regExpMatch.end] == " ") {
+            isCorrect = true;
+          }
+        }
+      }
+
+      if (isCorrect) {
+        if (index != regExpMatch.start) {
+          node = m.Text(textNode.text.substring(index, regExpMatch.start));
+
+          nodes.add(node);
+        }
+
+        m.Element matchedElement = m.Element(a, [m.Text(regExpMatch[0]!)]);
+
+        if (emailRegex.hasMatch(regExpMatch[0]!)) {
+          matchedElement.attributes["href"] =
+              "mailto:" + regExpMatch[0]!.replaceAll(" ", "");
+        } else {
+          matchedElement.attributes["href"] =
+              "tel:" + regExpMatch[0]!.replaceAll(" ", "");
+        }
+
+        nodes.add(matchedElement);
+      } else {
+        node = m.Text(textNode.text.substring(index, regExpMatch.end));
+
+        nodes.add(node);
+      }
+
+      index = regExpMatch.end;
     });
+
+    nodes.add(m.Text(textNode.text.substring(index)));
+
+    return nodes;
   }
 
   List<Widget>? _widgets;
@@ -100,7 +197,17 @@ class MarkdownGenerator {
         result = _helper.getTitleWidget(node, h6);
         break;
       case p:
-        result = _helper.getPWidget(node);
+        List<m.Node> nodeList = <m.Node>[];
+
+        node.children!.forEach((m.Node value) {
+          if (value is m.Text) {
+            nodeList.addAll(getNodes(value));
+          } else {
+            nodeList.add(value);
+          }
+        });
+
+        result = _helper.getPWidget(m.Element(p, nodeList));
         break;
       case pre:
         result = _helper.getPreWidget(node);

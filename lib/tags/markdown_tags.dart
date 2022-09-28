@@ -29,5 +29,7 @@ const String th = 'th';
 const String td = 'td';
 const String input = 'input';
 
+const String button = "button";
+
 ///custom tag
 const String other = 'other';
