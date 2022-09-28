@@ -71,6 +71,7 @@ class PWidget extends StatelessWidget {
             if (node.tag == a) return getLinkSpan(node);
             if (node.tag == input) return getInputSpan(node);
             if (node.tag == other) return getOtherWidgetSpan(node);
+            if (node.tag == button) return getButtonSpan(node);
             return getBlockSpan(
               node.children,
               node,

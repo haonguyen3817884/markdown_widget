@@ -6,7 +6,7 @@ verified publisher:
 homepage: https://github.com/asjqkkkk/markdown_widget
 
 environment:
-  sdk: '>=2.12.0 <3.0.0'
+  sdk: ">=2.12.0 <3.0.0"
 
 dependencies:
   flutter:
@@ -27,10 +27,12 @@ dependencies:
 
   # for TOC
   scrollable_positioned_list: ^0.3.2
-  
+  url_launcher: ^6.1.5
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
-
 flutter:
+  assets:
+    - assets/toannm (5).md

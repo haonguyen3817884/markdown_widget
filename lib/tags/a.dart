@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:markdown/markdown.dart' as m;
 import '../config/style_config.dart';
 
+import "../config/launcher_config.dart";
+
 ///Tag: a
 InlineSpan getLinkSpan(m.Element element) =>
     WidgetSpan(child: AWidget(element: element));
@@ -25,7 +27,13 @@ class AWidget extends StatelessWidget {
     return pConfig?.linkGesture?.call(linkWidget, url) ??
         GestureDetector(
           child: linkWidget,
-          onTap: () => pConfig?.onLinkTap?.call(url),
+          onTap: () {
+            if (pConfig?.onLinkTap == null) {
+              LauncherConfig(uri: url!).launchURL();
+            } else {
+              pConfig?.onLinkTap?.call(url);
+            }
+          },
         );
   }
 }

@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
+import "package:markdown_widget/config/method_config.dart";
+
 export 'dart:collection';
 export 'markdown_toc.dart';
 export 'markdown_generator.dart';
@@ -44,20 +46,23 @@ class MarkdownWidget extends StatefulWidget {
   /// [ListView] padding
   final EdgeInsetsGeometry? padding;
 
-  const MarkdownWidget({
-    Key? key,
-    required this.data,
-    this.widgetConfig,
-    this.styleConfig,
-    this.childMargin,
-    this.controller,
-    this.loadingWidget,
-    this.clearPositionWhenUpdate = false,
-    this.delayLoadDuration,
-    this.physics,
-    this.shrinkWrap = false,
-    this.padding,
-  }) : super(key: key);
+  final int? lineNumber;
+
+  const MarkdownWidget(
+      {Key? key,
+      required this.data,
+      this.widgetConfig,
+      this.styleConfig,
+      this.childMargin,
+      this.controller,
+      this.loadingWidget,
+      this.clearPositionWhenUpdate = false,
+      this.delayLoadDuration,
+      this.physics,
+      this.shrinkWrap = false,
+      this.padding,
+      this.lineNumber})
+      : super(key: key);
 
   @override
   _MarkdownWidgetState createState() => _MarkdownWidgetState();
@@ -70,9 +75,28 @@ class _MarkdownWidgetState extends State<MarkdownWidget> {
   final ItemPositionsListener itemPositionsListener =
       ItemPositionsListener.create();
   bool hasInitialed = false;
+  int maxLine = 0;
+
+  bool isMaxLineValid = false;
+
+  MethodConfig methodConfig = MethodConfig(methodInput: () {});
 
   @override
   void initState() {
+    if (widget.lineNumber == null) {
+      maxLine = widget.data.split("\n").length;
+    } else {
+      if (isLineNumberValid()) {
+        isMaxLineValid = true;
+
+        maxLine = widget.lineNumber!;
+
+        methodConfig = MethodConfig(methodInput: updateMaxLine);
+      } else {
+        maxLine = widget.data.split("\n").length;
+      }
+    }
+
     if (widget.delayLoadDuration == null) {
       updateState();
     } else
@@ -106,12 +130,21 @@ class _MarkdownWidgetState extends State<MarkdownWidget> {
 
   ///when we've got the data, we need update data without setState() to avoid the flicker of the view
   void updateState() {
-    markdownGenerator = MarkdownGenerator(
-      data: widget.data,
-      widgetConfig: widget.widgetConfig,
-      styleConfig: widget.styleConfig,
-      childMargin: widget.childMargin,
-    );
+    if (isMaxLineValid) {
+      markdownGenerator = MarkdownGenerator(
+          data: getData(maxLine),
+          widgetConfig: widget.widgetConfig,
+          styleConfig: widget.styleConfig,
+          childMargin: widget.childMargin,
+          buttonLabel: (maxLine == widget.lineNumber) ? "full" : "hide");
+    } else {
+      markdownGenerator = MarkdownGenerator(
+        data: widget.data,
+        widgetConfig: widget.widgetConfig,
+        styleConfig: widget.styleConfig,
+        childMargin: widget.childMargin,
+      );
+    }
     tocList.addAll(markdownGenerator!.tocList!);
     widgets.addAll(markdownGenerator!.widgets!);
     if (widget.controller != null) {
@@ -202,10 +235,54 @@ class _MarkdownWidgetState extends State<MarkdownWidget> {
     if (needRefresh) controller?.refresh();
   }
 
+  String getData(int max) {
+    String text = "";
+
+    List<String> textLines = widget.data.split("\n");
+
+    for (int i = 0; i < textLines.length; ++i) {
+      if (i < max) {
+        text = text + textLines[i] + "\n";
+      }
+    }
+
+    return text;
+  }
+
+  bool isLineNumberValid() {
+    return widget.data.split("\n").length > widget.lineNumber!;
+  }
+
+  void updateMaxLine() {
+    if (maxLine == widget.lineNumber) {
+      maxLine = widget.data.split("\n").length;
+    } else {
+      maxLine = widget.lineNumber!;
+    }
+
+    clearState();
+    updateState();
+    refresh();
+  }
+
   @override
   void didUpdateWidget(MarkdownWidget oldWidget) {
     clearState();
     if (widget.clearPositionWhenUpdate) widget.controller?.jumpTo(index: 0);
+
+    if (widget.lineNumber == null) {
+      maxLine = widget.data.split("\n").length;
+    } else {
+      if (isLineNumberValid()) {
+        isMaxLineValid = true;
+
+        maxLine = widget.lineNumber!;
+
+        methodConfig = MethodConfig(methodInput: updateMaxLine);
+      } else {
+        maxLine = widget.data.split("\n").length;
+      }
+    }
     updateState();
     super.didUpdateWidget(widget);
   }
